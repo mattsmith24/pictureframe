@@ -1,3 +1,7 @@
-/images
 /solarweb.json
 /__pycache__
+/images/**/*.jpg
+/images/**/*.jpeg
+/images/**/*.png
+/images/**/*.gif
+
