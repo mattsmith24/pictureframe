@@ -6,15 +6,21 @@ from urllib.parse import urlparse
 from urllib.parse import parse_qs
 from bs4 import BeautifulSoup
 
-Grid_threshold = 1000
+Default_grid_threshold = 1000
+config = None
+
 
 def get_image_select(pvdata_record):
+    global config
     if not pvdata_record["IsOnline"]:
         return "offline"
     pv = 0
+    grid_threshold = Default_grid_threshold
+    if config != None and "grid_threshold" in config:
+        grid_threshold = config["grid_threshold"]
     if pvdata_record["P_PV"] != None:
         pv = pvdata_record["P_PV"]
-    if pvdata_record["P_Grid"] - pv > Grid_threshold:
+    if pvdata_record["P_Grid"] - pv > grid_threshold:
         return "grid"
     else:
         return "solar"
@@ -25,10 +31,10 @@ def process_pvdata(pvdata_record):
 
 
 def main(terminate_event, pvdata_queue):
+    global config
     done = False
-    credentials = None
     with open("solarweb.json") as fd:
-        credentials = json.load(fd)
+        config = json.load(fd)
 
     with open("pvdata.log", "a") as pvdatalog:
         while not done:
@@ -41,8 +47,8 @@ def main(terminate_event, pvdata_queue):
             # Login to fronius
             commonauth = s.post("https://login.fronius.com/commonauth", data={
                 "sessionDataKey": session_data_key,
-                "username": credentials["username"],
-                "password": credentials["password"],
+                "username": config["username"],
+                "password": config["password"],
                 "chkRemember": "on"
             })
             # Register login with Solarweb
