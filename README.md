@@ -29,3 +29,5 @@ alert / inform the household when a certain amount of power is being used.
 
 Images are not distributed with this software so you will need to download your own
 for the images subfolder (see the README files for suggestions)
+
+To run it, try `python main.py`.
