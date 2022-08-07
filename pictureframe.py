@@ -167,9 +167,9 @@ def main(terminate_event, pvdata_queue):
                 if pvdata_record['P_PV'] != None:
                     pv = pvdata_record['P_PV']
 
-                grid_surface = sans_font.render(f"Grid: {pvdata_record['P_Grid']} W", True, (255, 255, 255, 255))
-                solar_surface = sans_font.render(f"Solar: {pv} W", True, (255, 255, 255, 255))
-                house_surface = sans_font.render(f"House: {-pvdata_record['P_Load']} W", True, (255, 255, 255, 255))
+                grid_surface = sans_font.render(f"Grid: {pvdata_record['P_Grid']:.1f} W", True, (255, 255, 255, 255))
+                solar_surface = sans_font.render(f"Solar: {pv:.1f} W", True, (255, 255, 255, 255))
+                house_surface = sans_font.render(f"House: {-pvdata_record['P_Load']:.1f} W", True, (255, 255, 255, 255))
                 margin = 20
                 text_height = grid_surface.get_rect().bottom
                 y_text_pos = screen_height - margin - text_height
