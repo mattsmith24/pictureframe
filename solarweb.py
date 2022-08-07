@@ -14,13 +14,10 @@ def get_image_select(pvdata_record):
     global config
     if not pvdata_record["IsOnline"]:
         return "offline"
-    pv = 0
     grid_threshold = Default_grid_threshold
     if config != None and "grid_threshold" in config:
         grid_threshold = config["grid_threshold"]
-    if pvdata_record["P_PV"] != None:
-        pv = pvdata_record["P_PV"]
-    if pvdata_record["P_Grid"] - pv > grid_threshold:
+    if pvdata_record["P_Grid"] > grid_threshold:
         return "grid"
     else:
         return "solar"
