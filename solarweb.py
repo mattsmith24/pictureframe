@@ -47,14 +47,14 @@ def main(terminate_event, pvdata_queue):
             # Get a session
             external_login = s.get("https://www.solarweb.com/Account/ExternalLogin")
             parsed_url = urlparse(external_login.url)
-            query_string = parse_qs(parsed_url.query)
-            if not ("sessionDataKey" in query_string):
+            query_dict = parse_qs(parsed_url.query)
+            if not ("sessionDataKey" in query_dict):
                 print("Error: Couldn't parse sessionDataKey from URL")
                 print(external_login)
                 print(external_login.url)
                 print(external_login.text)
                 continue
-            session_data_key = query_string['sessionDataKey'][0]
+            session_data_key = query_dict['sessionDataKey'][0]
             # Login to fronius
             commonauth = s.post("https://login.fronius.com/commonauth", data={
                 "sessionDataKey": session_data_key,
@@ -74,7 +74,14 @@ def main(terminate_event, pvdata_queue):
             external_login_callback = s.post("https://www.solarweb.com/Account/ExternalLoginCallback", data=commonauth_form_data)
             # Get PV system ID
             parsed_url = urlparse(external_login_callback.url)
-            pv_system_id = parse_qs(parsed_url.query)['pvSystemId'][0]
+            query_dict = parse_qs(parsed_url.query)
+            if not ('pvSystemId' in query_dict):
+                print("Error: Couldn't parse pvSystemId from URL")
+                print(external_login_callback)
+                print(external_login_callback.url)
+                print(external_login_callback.text)
+                continue
+            pv_system_id = query_dict['pvSystemId'][0]
             print("Logged into solarweb. Begin polling data")
             while True:
                 actual_data = s.get(f"https://www.solarweb.com/ActualData/GetCompareDataForPvSystem?pvSystemId={pv_system_id}")
