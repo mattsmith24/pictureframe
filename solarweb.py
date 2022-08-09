@@ -33,14 +33,28 @@ def main(terminate_event, pvdata_queue):
     with open("solarweb.json") as fd:
         config = json.load(fd)
 
+    last_login_attempt = None
+
     with open("pvdata.log", "a") as pvdatalog:
-        while not done:
+        while not done and not terminate_event.is_set():
+            # Delay logging in if we just made an attempt
+            if last_login_attempt != None and (datetime.datetime.now() - last_login_attempt).seconds < 30:
+                time.sleep(1)
+                continue
             print("Logging into solarweb")
+            last_login_attempt = datetime.datetime.now()
             s = requests.Session()
             # Get a session
             external_login = s.get("https://www.solarweb.com/Account/ExternalLogin")
             parsed_url = urlparse(external_login.url)
-            session_data_key = parse_qs(parsed_url.query)['sessionDataKey'][0]
+            query_string = parse_qs(parsed_url.query)
+            if not ("sessionDataKey" in query_string):
+                print("Error: Couldn't parse sessionDataKey from URL")
+                print(external_login)
+                print(external_login.url)
+                print(external_login.text)
+                continue
+            session_data_key = query_string['sessionDataKey'][0]
             # Login to fronius
             commonauth = s.post("https://login.fronius.com/commonauth", data={
                 "sessionDataKey": session_data_key,
@@ -79,9 +93,3 @@ def main(terminate_event, pvdata_queue):
                 if terminate_event.wait(timeout=30.0):
                     done = True
                     break
-            if terminate_event.is_set():
-                done = True
-                break
-            if not done:
-                # Delay before attempting login in again
-                time.sleep(30)
