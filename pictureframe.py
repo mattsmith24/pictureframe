@@ -162,7 +162,8 @@ def main(terminate_event, pvdata_queue):
             prev_pos = pos
 
         if pygame.font.get_init() and pvdata_record != None and pvdata_record["datetime"] != prev_timestamp:
-            if pvdata_record["IsOnline"]:
+            if "IsOnline" in pvdata_record and pvdata_record["IsOnline"] and "P_Grid" in pvdata_record \
+                    and "P_PV" in pvdata_record and "P_Load" in pvdata_record:
                 pv = 0
                 if pvdata_record['P_PV'] != None:
                     pv = pvdata_record['P_PV']

@@ -12,7 +12,7 @@ config = None
 
 def get_image_select(pvdata_record):
     global config
-    if not pvdata_record["IsOnline"]:
+    if not ("IsOnline" in pvdata_record) or not pvdata_record["IsOnline"] or not ("P_Grid" in pvdata_record):
         return "offline"
     grid_threshold = Default_grid_threshold
     if config != None and "grid_threshold" in config:
