@@ -48,7 +48,7 @@ def main(terminate_event, pvdata_queue):
             external_login = s.get("https://www.solarweb.com/Account/ExternalLogin")
             parsed_url = urlparse(external_login.url)
             query_dict = parse_qs(parsed_url.query)
-            if not ("sessionDataKey" in query_dict):
+            if external_login.status_code != 200 or not ("sessionDataKey" in query_dict):
                 print("Error: Couldn't parse sessionDataKey from URL")
                 print(external_login)
                 print(external_login.url)
@@ -62,6 +62,13 @@ def main(terminate_event, pvdata_queue):
                 "password": config["password"],
                 "chkRemember": "on"
             })
+            if commonauth.status_code != 200:
+                print("Error: posting to commonauth")
+                print(commonauth)
+                print(commonauth.url)
+                print(commonauth.text)
+                continue
+
             # Register login with Solarweb
             soup = BeautifulSoup(commonauth.text, 'html.parser')
             commonauth_form_data = {
@@ -75,7 +82,7 @@ def main(terminate_event, pvdata_queue):
             # Get PV system ID
             parsed_url = urlparse(external_login_callback.url)
             query_dict = parse_qs(parsed_url.query)
-            if not ('pvSystemId' in query_dict):
+            if external_login_callback.status_code != 200 or not ('pvSystemId' in query_dict):
                 print("Error: Couldn't parse pvSystemId from URL")
                 print(external_login_callback)
                 print(external_login_callback.url)
