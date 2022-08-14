@@ -1,6 +1,7 @@
 /solarweb.json
 /__pycache__
-/pvdata.log
+/pvdata*.log
+/dailydata*.csv
 /images/**/*.jpg
 /images/**/*.jpeg
 /images/**/*.png
