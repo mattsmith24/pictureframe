@@ -31,9 +31,3 @@ Images are not distributed with this software so you will need to download your 
 for the images subfolder (see the README files for suggestions)
 
 To run it, try `python main.py`.
-
-There is an optional script to download solar history to csv files (per year). To use
-this script. First add a field 'install_date' to the solarweb.json file with format 
-'YYYY-MM-DD'. The script will attempt to download daily data from the date until now.
-To run it type `python getallcsv.py`. It will outpout files to logcsv-{year}.csv
-files.

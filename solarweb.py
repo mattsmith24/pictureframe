@@ -16,7 +16,6 @@ def is_new_ts(ts_datetime, last_dailydata_timestamp):
 class SolarWeb:
     def __init__(self) -> None:
         self.config = None
-        self.last_dailydata_timestamp = None
         self.requests_session = None
         self.pv_system_id = None
 
@@ -34,18 +33,6 @@ class SolarWeb:
 
     def process_pvdata(self, pvdata_record):
         pvdata_record["img_select"] = self.get_image_select(pvdata_record)
-
-
-    def init_dailydata(self):
-        yesterday = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
-        try:
-            with open(f"dailydata-{yesterday.year}.csv", "r") as fd:
-                dailydata = fd.readlines()
-                self.last_dailydata_timestamp = datetime.datetime.fromisoformat(dailydata[-1].split(",")[0])
-        except FileNotFoundError:
-            pass
-        except IndexError:
-            pass
 
 
     def login(self):
@@ -102,70 +89,6 @@ class SolarWeb:
         return True
 
 
-    def get_chart(self, chartday, interval, view):
-        chart_data = self.requests_session.get(f"https://www.solarweb.com/Chart/GetChartNew?pvSystemId={self.pv_system_id}&year={chartday.year}&month={chartday.month}&day={chartday.day}&interval={interval}&view={view}")
-        if chart_data.status_code != 200:
-            print(chart_data)
-            print(chart_data.url)
-            print(chart_data.text)
-            return None
-        return chart_data.json()
-
-
-    def process_chart_data(self, yesterday, filenameprefix="dailydata"):
-        # Chart data is a json structure that wraps an array of timestamp / kwh values.
-        # The timestamps can be parsed with datetime.datetime.fromtimestamp(val / 1000, tz=datetime.timezone.utc)
-        chart_month_production = self.get_chart(yesterday, "month", "production")
-        if chart_month_production == None:
-            return False
-
-        found_new_data = False
-        for data_tuple in chart_month_production["settings"]["series"][0]["data"]:
-            ts_datetime = datetime.datetime.fromtimestamp(int(data_tuple[0])/1000, tz=datetime.timezone.utc)
-            if is_new_ts(ts_datetime, self.last_dailydata_timestamp):
-                found_new_data = True
-                break
-        if not found_new_data:
-            return True
-
-        # Get cumulative solar consumption data for the current month
-        chart_month_consumption = self.get_chart(yesterday, "month", "consumption")
-        if chart_month_consumption == None:
-            return False
-
-        # Extract the data series from the charts
-        daily_data_tuples = {}
-        for series in chart_month_production["settings"]["series"]:
-            if series["name"] == "Energy to grid":
-                daily_data_tuples["feedin"] = series["data"]
-            if series["name"] == "Consumed directly":
-                daily_data_tuples["direct"] = series["data"]
-        for series in chart_month_consumption["settings"]["series"]:
-            if series["name"] == "Energy from grid":
-                daily_data_tuples["grid"] = series["data"]
-        # Rearrange the series to group all series by timestamp
-        daily_data_dict = {}
-        for label in ["grid", "feedin", "direct"]:
-            for tuple in daily_data_tuples[label]:
-                ts = tuple[0]
-                if ts not in daily_data_dict:
-                    # Using defaultdict here will handle cases where these is a missing series for a timestamp
-                    # and just return 0 in the next loop
-                    daily_data_dict[ts] = defaultdict(int)
-                daily_data_dict[ts][label] = tuple[1]
-        with open(f"{filenameprefix}-{yesterday.year}.csv", "a") as fd:
-            for ts,data_dict in daily_data_dict.items():
-                ts_datetime = datetime.datetime.fromtimestamp(int(ts)/1000, tz=datetime.timezone.utc)
-                if is_new_ts(ts_datetime, self.last_dailydata_timestamp):
-                    # solar generation = feedin + direct consumption
-                    # house user = direct consumption + grid
-                    entry = [ts_datetime.isoformat(), data_dict["grid"], data_dict["direct"] + data_dict["feedin"], data_dict["direct"] + data_dict["grid"]]
-                    entry_str = ",".join([str(e) for e in entry])
-                    fd.write(entry_str + "\n")
-            self.last_dailydata_timestamp = ts_datetime
-        return True
-
-
     def load_config(self):
         with open("solarweb.json") as fd:
             self.config = json.load(fd)
@@ -174,11 +97,8 @@ class SolarWeb:
     def run(self, terminate_event, pvdata_queue):
         done = False
         self.load_config()
-        self.init_dailydata()
 
         last_login_attempt = None
-        today = datetime.datetime.now(datetime.timezone.utc)
-        pvdatalog = open(f"pvdata-{today.year}-{today.month:02}-{today.day:02}.log", "a")
         while not done and not terminate_event.is_set():
             # Delay logging in if we just made an attempt
             if last_login_attempt != None and (datetime.datetime.now() - last_login_attempt).seconds < 30:
@@ -204,8 +124,6 @@ class SolarWeb:
                     break
                 pvdata_record = actual_data.json()
                 pvdata_record["datetime"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                logline = json.dumps(pvdata_record)
-                print(logline, file=pvdatalog, flush=True)
                 self.process_pvdata(pvdata_record)
                 pvdata_queue.put(pvdata_record)
 
@@ -213,18 +131,10 @@ class SolarWeb:
                 if terminate_event.is_set():
                     done = True
                     break
-
-                # Get cumulative solar production data for yesterday, this is so that we get
-                # full days totals across the month boundary
-                yesterday = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
-                if not self.process_chart_data(yesterday):
-                    break
-
                 # Delay and/or exit
                 if terminate_event.wait(timeout=30.0):
                     done = True
                     break
-        pvdatalog.close()
         if self.requests_session != None:
             self.requests_session.close()
 
@@ -232,27 +142,4 @@ class SolarWeb:
 def main(terminate_event, pvdata_queue):
     solar_web = SolarWeb()
     solar_web.run(terminate_event, pvdata_queue)
-
-
-def logcsv():
-    solar_web = SolarWeb()
-    solar_web.load_config()
-    if not solar_web.login():
-        return
-    process_date = datetime.datetime.strptime(solar_web.config["install_date"],"%Y-%m-%d")
-    process_date.replace(tzinfo=datetime.timezone.utc)
-    while True:
-        print(process_date.isoformat())
-        if not solar_web.process_chart_data(process_date, "logcsv"):
-            break
-        new_year = process_date.year
-        new_month = process_date.month + 1
-        if new_month > 12:
-            new_month = 1
-            new_year += 1
-        process_date = process_date.replace(month=new_month, year=new_year)
-        if process_date > datetime.datetime.now():
-            break
-    yesterday = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
-    solar_web.process_chart_data(yesterday, "logcsv")
 
