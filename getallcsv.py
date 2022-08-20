@@ -1,3 +1,0 @@
-import solarweb
-
-solarweb.logcsv()
