@@ -122,7 +122,14 @@ class SolarWeb:
                     print(actual_data.url)
                     print(actual_data.text)
                     break
-                pvdata_record = actual_data.json()
+                try:
+                    pvdata_record = actual_data.json()
+                except requests.exceptions.JSONDecodeError:
+                    print("Exception while parsing pvdata")
+                    print(actual_data.url)
+                    print(actual_data.text)
+                    break
+
                 pvdata_record["datetime"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 self.process_pvdata(pvdata_record)
                 pvdata_queue.put(pvdata_record)
