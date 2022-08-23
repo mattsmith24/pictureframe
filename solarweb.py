@@ -116,7 +116,11 @@ class SolarWeb:
 
             while True:
                 # Get realtime solar data
-                actual_data = self.requests_session.get(f"https://www.solarweb.com/ActualData/GetCompareDataForPvSystem?pvSystemId={self.pv_system_id}")
+                try:
+                    actual_data = self.requests_session.get(f"https://www.solarweb.com/ActualData/GetCompareDataForPvSystem?pvSystemId={self.pv_system_id}")
+                except requests.exceptions.ConnectionError as e:
+                    print(f"Connection error when accessing GetCompareDataForPvSystem: {e}")
+                    break
                 if actual_data.status_code != 200:
                     print(actual_data)
                     print(actual_data.url)
