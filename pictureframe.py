@@ -117,7 +117,7 @@ def main(terminate_event, pvdata_queue):
     pygame.init()
     sans_font = None
     if pygame.font.get_init():
-        sans_font = pygame.font.SysFont("Calibri", 50)
+        sans_font = pygame.font.SysFont("Calibri", 70)
     else:
         print("pygame.font.init() failed. This module is optional and requires SDL_ttf as a dependency. Not text can be shown")
     screen = pygame.display.set_mode(screen_size)
@@ -171,7 +171,7 @@ def main(terminate_event, pvdata_queue):
                 grid_surface = sans_font.render(f"Grid: {pvdata_record['P_Grid']:.1f} W", True, (255, 255, 255, 255))
                 solar_surface = sans_font.render(f"Solar: {pv:.1f} W", True, (255, 255, 255, 255))
                 house_surface = sans_font.render(f"House: {-pvdata_record['P_Load']:.1f} W", True, (255, 255, 255, 255))
-                margin = 20
+                margin = 40
                 text_height = grid_surface.get_rect().bottom
                 y_text_pos = screen_height - margin - text_height
                 grid_text_pos = margin
